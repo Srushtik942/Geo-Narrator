@@ -1,6 +1,6 @@
 # Geo Narrator
 
-An AI-powered voice tour guide that narrates points of interest as you explore them, and answers your questions out loud — built for [Hackathon Name].
+An AI-powered voice tour guide that narrates points of interest as you explore them, and answers your questions out loud — built for OpenAI Codex Hackathon.
 
 **Live demo:** https://geo-narrator.onrender.com
 
@@ -168,4 +168,4 @@ This app deploys as a **single Render Web Service** — no separate frontend hos
 
 ## License
 
-Built for [OpenAI Codex Hackathon], July 2026.
+Built for OpenAI Codex Hackathon, July 2026.
