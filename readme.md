@@ -1,285 +1,171 @@
-# Trailtale — Backend Build Rules (for Codex)
+# Geo Narrator
 
-These are the rules to follow, in order, when building the Trailtale backend. Follow the sequence — do not build features out of order. Only required services are listed; no optional/nice-to-have integrations are included.
+An AI-powered voice tour guide that narrates points of interest as you explore them, and answers your questions out loud — built for [Hackathon Name].
 
----
-
-## Build Order (must follow this sequence)
-
-1. **Authentication first** — nothing else gets built until Google Sign-In + session handling works end-to-end.
-2. **Anthropic Claude API integration** — narration + Q&A endpoints, protected behind auth.
-3. **Supporting endpoints** — POI data, journal/history storage.
-
-Do not skip ahead to narration or POI features before auth is working and tested.
+**Live demo:** https://geo-narrator.onrender.com
 
 ---
 
-## 1. Authentication (build this first)
+## What it does
 
-### Requirement
-Users sign in with Google on the frontend (Google Identity Services). The backend must verify the Google token, create/find the user, and issue the app's own session token. All other endpoints must be protected by this session token.
+- Sign in with Google to start your personal guided walk
+- Get short, spoken-style narration for a point of interest, generated live by an AI model
+- Ask follow-up questions by voice and get spoken answers back
+- Choose a guide "voice" / persona (e.g. Warm Local Guide, Curious Historian, Playful Storyteller, Calm Educator)
+- See an AI-generated atmospheric image for each location
 
-### Rules
-- Never trust the frontend's claim of "who the user is" — always verify the Google credential server-side.
-- Never store or log the raw Google ID token beyond the verification step.
-- Session tokens (JWT) must expire (7 days max for hackathon demo) and must be signed with a secret stored in an environment variable, never hardcoded.
-- Every protected route must go through auth middleware — no exceptions.
+---
 
-### Required package
-```bash
-npm install google-auth-library jsonwebtoken express dotenv
+## Tech stack
+
+| Layer | Tech |
+|---|---|
+| Backend | Node.js, Express |
+| Auth | Google Identity Services (client-side) + Google token verification server-side (`google-auth-library`) + JWT sessions |
+| AI narration & Q&A | Claude models via OpenRouter API |
+| AI image generation | Pollinations.ai (free, no key required) |
+| Voice | Browser-native Web Speech API (`SpeechSynthesis` for text-to-speech, `SpeechRecognition` for speech-to-text) |
+| Frontend | Plain HTML / CSS / JavaScript (no framework, no build step) |
+| Hosting | Render (single Web Service serves both API and static frontend) |
+
+---
+
+## Project structure
+
+```
+Geo-Narrator/
+├── index.js                 # Express app entry point
+├── frontend/
+│   ├── index.html
+│   ├── app.js
+│   ├── styles.css
+│   └── favicon.ico
+├── routes/
+│   ├── auth.js               # POST /api/auth/google
+│   └── narration.js          # POST /api/narration, POST /api/ask, POST /api/image
+├── Services/
+│   └── authentication/
+│       └── auth.js           # Google token verification (verifyGoogleToken)
+├── middleware/
+│   └── authMiddleware.js     # JWT session verification
+├── lib/
+│   └── claude.js             # callClaude() + generateImage()
+├── .env                       # local secrets (never committed)
+├── .env.example                # template for required env vars
+└── package.json
 ```
 
-### Environment variables (`.env`, never commit this file)
-```
-GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-JWT_SECRET=long_random_string
+---
+
+## Environment variables
+
+Create a `.env` file in the project root (see `.env.example`):
+
+```dotenv
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+JWT_SECRET=a_long_random_string
+ANTHROPIC_API_KEY=your_openrouter_key
+ANTHROPIC_MODEL=anthropic/claude-sonnet-4.5
 PORT=3000
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
-### `auth.js` — verify Google token
-```js
-const { OAuth2Client } = require('google-auth-library');
-
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const client = new OAuth2Client(CLIENT_ID);
-
-async function verifyGoogleToken(idToken) {
-  const ticket = await client.verifyIdToken({
-    idToken,
-    audience: CLIENT_ID,
-  });
-  return ticket.getPayload(); // { email, name, picture, sub, ... }
-}
-
-module.exports = { verifyGoogleToken };
-```
-
-### `POST /api/auth/google` — login endpoint
-```js
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const { verifyGoogleToken } = require('./auth');
-
-const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET;
-
-router.post('/auth/google', async (req, res) => {
-  try {
-    const { credential } = req.body; // JWT sent from the frontend Google button
-
-    const payload = await verifyGoogleToken(credential);
-
-    // Find or create the user (replace with real DB call)
-    let user = await User.findOne({ googleId: payload.sub });
-    if (!user) {
-      user = await User.create({
-        googleId: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        picture: payload.picture,
-      });
-    }
-
-    const sessionToken = jwt.sign(
-      { userId: user._id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      token: sessionToken,
-      user: { name: user.name, email: user.email, picture: user.picture },
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(401).json({ error: 'Invalid Google token' });
-  }
-});
-
-module.exports = router;
-```
-
-### `authMiddleware.js` — protect routes
-```js
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET;
-
-function authMiddleware(req, res, next) {
-  const authHeader = req.headers.authorization; // "Bearer <token>"
-  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
-
-  const token = authHeader.split(' ')[1];
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid or expired token' });
-  }
-}
-
-module.exports = authMiddleware;
-```
-
-### Checklist before moving to step 2
-- [ ] Google Client ID set in `.env`
-- [ ] `/api/auth/google` returns a valid session token when tested with a real Google credential
-- [ ] Protected test route (`/api/me`) rejects requests with no/invalid token
-- [ ] Protected test route accepts requests with a valid session token
-
----
-
-## 2. Anthropic Claude API (narration + Q&A) — build this second
-
-### Requirement
-All Claude API calls happen **server-side only**. The frontend never sees or holds the Anthropic API key. Every narration/Q&A request must pass through `authMiddleware` first.
-
-### Where to get the key
-- Anthropic Console: https://console.anthropic.com
-- Sign up → "API Keys" → Create Key. New accounts usually get some free credit.
-
-### Environment variable
-```
-ANTHROPIC_API_KEY=your_key_here
-```
-
-### `claude.js` — helper
-```js
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
-async function callClaude(prompt) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-  const data = await res.json();
-  if (data.content && data.content[0] && data.content[0].text) {
-    return data.content[0].text.trim();
-  }
-  throw new Error('Claude API returned no content');
-}
-
-module.exports = { callClaude };
-```
-
-### `POST /api/narration` — protected route
-```js
-router.post('/narration', authMiddleware, async (req, res) => {
-  try {
-    const { poiName, facts, persona } = req.body;
-    const prompt = `You are Trailtale, an AI guide narrating live at "${poiName}".
-Persona: ${persona}
-Use ONLY these grounding facts: ${facts.join(' ')}
-Write 2-3 short spoken-style sentences. No lists, no headers.`;
-
-    const narration = await callClaude(prompt);
-    res.json({ narration });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to generate narration' });
-  }
-});
-```
-
-### `POST /api/ask` — protected route
-```js
-router.post('/ask', authMiddleware, async (req, res) => {
-  try {
-    const { question, poiName, facts, persona } = req.body;
-    const prompt = `You are Trailtale, speaking aloud to a visitor at "${poiName}".
-Persona: ${persona}
-Known facts: ${facts.join(' ')}
-The visitor asked: "${question}"
-Answer in 1-3 short spoken sentences.`;
-
-    const answer = await callClaude(prompt);
-    res.json({ answer });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to answer question' });
-  }
-});
-```
-
-### Rules
-- Reject the request with `400` if `poiName`, `facts`, or `persona` is missing.
-- Never let the frontend pass a raw prompt string directly to Claude — always build the prompt server-side from structured fields, to prevent prompt injection.
-- Rate-limit these two routes per user if time allows (not required for hackathon demo, but flag it as a TODO).
-
----
-
-## 3. Supporting Data (build this third)
-
-### POI data endpoint
-```js
-router.get('/pois', authMiddleware, (req, res) => {
-  res.json(POIS); // hardcoded array for hackathon: id, name, lat, lng, radiusMeters, facts
-});
-```
-
-### Journal/history endpoint (optional to persist, but keep the shape ready)
-```js
-router.post('/journal', authMiddleware, async (req, res) => {
-  const { poiId, type, text } = req.body; // type: 'narration' | 'question' | 'answer'
-  // Save to DB, associated with req.user.userId
-  res.json({ saved: true });
-});
-
-router.get('/journal', authMiddleware, async (req, res) => {
-  // Fetch entries for req.user.userId
-  res.json({ entries: [] });
-});
-```
-
----
-
-## Location & Voice — no backend needed
-
-These run entirely in the browser. Do **not** build backend endpoints for these — there is nothing to proxy:
-
-| Capability | API | Notes |
+| Variable | Where to get it | Required |
 |---|---|---|
-| Get user's live position | `navigator.geolocation.watchPosition` | Native browser API, no key |
-| Speak narration aloud | `window.speechSynthesis` | Native browser API, no key |
-| Capture spoken question | `window.SpeechRecognition` / `webkitSpeechRecognition` | Native browser API, no key |
+| `GOOGLE_CLIENT_ID` | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → OAuth Client | Yes |
+| `JWT_SECRET` | Generate locally: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` | Yes |
+| `ANTHROPIC_API_KEY` | [OpenRouter](https://openrouter.ai) → API Keys (this project calls Claude models through OpenRouter, not Anthropic directly) | Yes |
+| `ANTHROPIC_MODEL` | Any Claude model slug available on OpenRouter, e.g. `anthropic/claude-sonnet-4.5` | Optional — has a default |
+| `PORT` | Any free local port | Optional — defaults to 3000 |
+| `CORS_ORIGINS` | Comma-separated list of allowed frontend origins | Yes |
+
+**Never commit `.env`.** It's already listed in `.gitignore`.
 
 ---
 
-## Global Rules (apply everywhere)
+## Running locally
 
-1. **Auth is mandatory** on every route except `/api/auth/google` itself.
-2. **No API keys in frontend code** — Anthropic key lives only in backend `.env`.
-3. **`.env` is never committed** — add it to `.gitignore` immediately.
-4. **Validate all request bodies** — reject with `400` on missing required fields before calling any external API.
-5. **Wrap every external API call in try/catch** and return a clean `500` with a generic error message — never leak stack traces or raw error objects to the frontend.
-6. **CORS** — only allow requests from your known frontend origin(s) (localhost dev URL + deployed Vercel URL), not `*`.
-7. Do not add ElevenLabs, Whisper, or Google Maps integrations — out of scope for this build.
+```bash
+git clone https://github.com/Srushtik942/Geo-Narator.git
+cd Geo-Narrator
+npm install
+cp .env.example .env   # then fill in real values
+node index.js
+```
+
+Open **http://localhost:3000** — the same Express server serves both the API and the frontend.
 
 ---
 
-## Minimal folder structure
+## Google Sign-In setup
+
+1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Create an OAuth 2.0 Client ID → Web application
+3. Add to **Authorised JavaScript origins**:
+   - `http://localhost:3000` (local dev)
+   - `https://geo-narrator.onrender.com` (production)
+4. Add the same two URLs to **Authorised redirect URIs**
+5. Under **Audience**, set publishing status to allow external users (any Google account)
+6. Copy the Client ID into `GOOGLE_CLIENT_ID` in your `.env`
+
+---
+
+## API endpoints
+
+All routes below (except `/api/auth/google`) require a valid session token, sent as:
 ```
-/backend
-  .env
-  .gitignore
-  server.js
-  /routes
-    auth.js
-    narration.js
-    pois.js
-    journal.js
-  /middleware
-    authMiddleware.js
-  /lib
-    claude.js
-    googleAuth.js
+Authorization: Bearer <token>
 ```
+
+| Method | Route | Purpose |
+|---|---|---|
+| `POST` | `/api/auth/google` | Verifies a Google credential, creates/finds the user, returns a session JWT |
+| `POST` | `/api/narration` | Generates spoken-style narration for a point of interest |
+| `POST` | `/api/ask` | Answers a visitor's spoken question about a point of interest |
+| `POST` | `/api/image` | Generates an atmospheric image for a point of interest |
+
+### Example: `POST /api/narration`
+Request body:
+```json
+{
+  "poiName": "India Gate",
+  "persona": "Curious Historian"
+}
+```
+Response:
+```json
+{
+  "narration": "India Gate stands as a solemn tribute...",
+  "imageUrl": "https://image.pollinations.ai/prompt/..."
+}
+```
+
+---
+
+## Deployment (Render)
+
+This app deploys as a **single Render Web Service** — no separate frontend hosting needed, since Express serves the static frontend files directly.
+
+1. Push this repo to GitHub
+2. Render → New → Web Service → connect the repo
+3. Settings:
+   - **Root Directory:** blank (repo root)
+   - **Build Command:** `npm install`
+   - **Start Command:** `node index.js`
+4. Add all environment variables from the table above in Render's **Environment** tab — make sure `CORS_ORIGINS` includes your live Render URL
+5. Deploy, then add the live Render URL to Google Cloud Console's Authorised origins (see above)
+
+---
+
+## Known limitations / hackathon scope notes
+
+- Location detection (Geolocation + Haversine proximity trigger) is designed but the demo primarily uses manual POI selection for reliability during live demos, since GPS is inconsistent indoors/on stage
+- `SpeechRecognition` (voice input) works best on Chrome and Safari iOS 14.5+; browser support varies
+- Image generation via Pollinations.ai has no guaranteed uptime SLA — it's free and has no key, which is why it was chosen for the hackathon build over paid alternatives
+- No persistent database is wired in yet for journal/history — the `/api/journal` shape exists in the backend rules but isn't required for the current demo flow
+
+---
+
+## License
+
+Built for [OpenAI Codex Hackathon], July 2026.
