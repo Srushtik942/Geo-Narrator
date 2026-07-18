@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Geo Narrator — a quieter way to explore a place." />
+    <title>Geo Narrator</title>
+    <link rel="preconnect" href="https://accounts.google.com" />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <main>
+      <section class="auth-shell" id="authView">
+        <div class="brand"><span class="brand-mark">◎</span> GEO NARRATOR</div>
+        <div class="auth-grid">
+          <aside class="photo-panel" aria-label="India Gate, New Delhi">
+            <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Location background" />
+            <div class="photo-caption"><span>01 — NEW DELHI</span><p>Every place has a story worth hearing.</p></div>
+          </aside>
+          <section class="auth-card">
+            <p class="eyebrow" id="authEyebrow">WELCOME BACK</p>
+            <h1 id="authTitle">Continue your<br />walk.</h1>
+            <p class="intro" id="authCopy">Sign in to pick up your personal audio guide wherever you left off.</p>
+            <div id="googleButton" class="google-button"></div>
+            <p class="auth-note">We use your Google account only to create your secure session.</p>
+            <button class="text-button" id="authToggle" type="button">New here? Create an account <span>→</span></button>
+            <p class="status" id="authStatus" role="status"></p>
+          </section>
+        </div>
+      </section>
+
+      <section class="dashboard hidden" id="dashboardView">
+        <header class="topbar">
+          <a class="brand" href="#"><span class="brand-mark">◎</span> GEO NARRATOR</a>
+          <nav><span id="welcomeName">Explorer</span><button class="logout" id="logoutButton" type="button">Log out</button></nav>
+        </header>
+        <div class="dashboard-grid">
+          <aside class="place-card">
+            <img src="https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=1500&q=85" alt="India Gate in New Delhi" />
+            <div class="place-overlay"><span class="eyebrow">YOUR LOCATION</span><h2>India Gate</h2><p>New Delhi, India</p></div>
+          </aside>
+          <section class="guide-content">
+            <div class="section-heading"><p class="eyebrow">LIVE GUIDE</p><h1>A story, in the<br />place it happened.</h1></div>
+            <div class="controls">
+              <label>Point of interest <input id="poiName" value="India Gate" maxlength="160" /></label>
+              <label>Guide voice <select id="voice">
+                <option value="Warm local guide">Warm local guide</option>
+                <option value="Curious historian">Curious historian</option>
+                <option value="Playful storyteller">Playful storyteller</option>
+                <option value="Calm educator">Calm educator</option>
+              </select></label>
+              <p class="helper full">Facts are generated automatically for the selected place.</p>
+            </div>
+            <button class="primary" id="narrateButton" type="button">Generate narration <span>↗</span></button>
+            <article class="narration-card" id="narrationCard" aria-live="polite"><p class="eyebrow">NARRATION</p><p id="narrationText">Choose “Generate narration” to hear the story of this place.</p></article>
+          </section>
+          <section class="ask-panel">
+            <div><p class="eyebrow">ASK THE GUIDE</p><h2>What would you<br />like to know?</h2></div>
+            <div class="question-box"><textarea id="question" rows="3" maxlength="800" placeholder="Ask about this place..."></textarea><div><button class="mic" id="micButton" type="button" aria-label="Ask using microphone">◉</button><button class="send" id="askButton" type="button" aria-label="Send question">↑</button></div></div>
+            <p class="mic-note">Use the microphone to ask aloud.</p>
+            <article class="answer-card hidden" id="answerCard" aria-live="polite"><p class="eyebrow">ANSWER</p><p id="answerText"></p></article>
+          </section>
+        </div>
+      </section>
+    </main>
+    <script src="/frontend-config.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
