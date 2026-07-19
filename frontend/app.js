@@ -143,6 +143,27 @@ function buildAskPayload(question) {
   return { question: question.trim() };
 }
 
+
+async function speak(text) {
+  if (!text) return;
+  try {
+    const res = await fetch(`${API}/speak`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error('Speech generation failed');
+    const audioBlob = await res.blob();
+    const audio = new Audio(URL.createObjectURL(audioBlob));
+    audio.play();
+  } catch (error) {
+    console.error('Speech playback failed:', error.message);
+  }
+}
+
+
+
+
 async function submitAsk(questionText = $('question').value.trim()) {
   const question = questionText.trim();
   if (!question) return;
@@ -154,7 +175,8 @@ async function submitAsk(questionText = $('question').value.trim()) {
     const data = await api('/ask', buildAskPayload(question));
     $('answerText').textContent = data.answer;
     $('answerCard').classList.remove('hidden');
-    speechSynthesis?.speak(new SpeechSynthesisUtterance(data.answer));
+    // speechSynthesis?.speak(new SpeechSynthesisUtterance(data.answer));
+    speak(data.answer);
   } catch (error) {
     $('answerText').textContent = error.message;
     $('answerCard').classList.remove('hidden');
@@ -173,7 +195,8 @@ $('narrateButton').addEventListener('click', async () => {
   try {
     const data = await api('/narration', buildNarrationPayload());
     $('narrationText').textContent = data.narration;
-    speechSynthesis?.speak(new SpeechSynthesisUtterance(data.narration));
+    // speechSynthesis?.speak(new SpeechSynthesisUtterance(data.narration));
+    speak(data.narration);
   } catch (error) {
     $('narrationText').textContent = error.message;
   } finally {
