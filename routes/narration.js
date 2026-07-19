@@ -1,6 +1,9 @@
 const express = require('express');
 const authMiddleware = require('../middleware/authMiddleware');
 const { callClaude, generateImage } = require('../lib/claude');
+const ELEVEN_LABS_API_KEY = process.env.ELEVEN_LABS_API_KEY;
+const ELEVEN_LABS_VOICE_GUIDE = process.env.ELEVEN_LABS_VOICE_GUIDE;
+const ELEVEN_LABS_API = process.env.ELEVEN_LABS_API;
 
 const router = express.Router();
 const userContexts = new Map();
@@ -185,6 +188,42 @@ router.post('/image', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Image generation failed:', error.message);
     return res.status(500).json({ error: 'Failed to generate image' });
+  }
+});
+
+router.post('/speak', authMiddleware, async (req, res) => {
+  const { text } = req.body || {};
+  if (!validText(text, 2000)) return res.status(400).json({ error: 'text is required' });
+
+  try {
+    const response = await fetch(`${ELEVEN_LABS_API}/${ELEVEN_LABS_VOICE_GUIDE}`, {
+      method: 'POST',
+      headers:{
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVEN_LABS_API_KEY,
+      },
+      body: JSON.stringify({
+        text: text.trim(),
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Eleven Labs API error:', response.status, errorData);
+      throw new Error(errorData?.error?.message || `Eleven Labs request failed with status ${response.status}`);
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    res.set('Content-Type', 'audio/mpeg');
+    res.send(Buffer.from(audioBuffer));
+  } catch (error) {
+    console.error('Speech generation failed:', error.message);
+    res.status(500).json({ error: 'Failed to generate speech' });
   }
 });
 
