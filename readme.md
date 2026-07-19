@@ -6,6 +6,13 @@ An AI-powered voice tour guide that narrates points of interest as you explore t
 
 ---
 
+<img width="1786" height="865" alt="image" src="https://github.com/user-attachments/assets/ab7393d7-7a10-4723-b0c4-c5e69537a279" />
+<img width="1121" height="791" alt="image" src="https://github.com/user-attachments/assets/ad7c6d69-290d-4628-a016-fb6ebca78018" />
+<img width="1118" height="796" alt="image" src="https://github.com/user-attachments/assets/885ba516-5540-41c7-b2a3-66a80e21d8db" />
+
+
+
+
 ## What it does
 
 - Sign in with Google to start your personal guided walk
