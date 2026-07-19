@@ -157,6 +157,17 @@ This app deploys as a **single Render Web Service** — no separate frontend hos
 
 ---
 
+
+## Future Progress
+
+- Multi-language voice narration — guide speaks in the visitor's chosen language
+- Auto-translate Q&A answers to match selected language
+- Language-aware voice modulation (tone/accent suited to each language)
+- Language selector added to sign-in/onboarding flow
+- Automatic GPS-based location detection (no manual selection)
+- Voice modulation for more expressive, natural-sounding narration
+
+
 ## Known limitations / hackathon scope notes
 
 - Location detection (Geolocation + Haversine proximity trigger) is designed but the demo primarily uses manual POI selection for reliability during live demos, since GPS is inconsistent indoors/on stage
