@@ -31,7 +31,7 @@ An AI-powered voice tour guide that narrates points of interest as you explore t
 | Auth | Google Identity Services (client-side) + Google token verification server-side (`google-auth-library`) + JWT sessions |
 | AI narration & Q&A | Claude models via OpenRouter API |
 | AI image generation | Pollinations.ai (free, no key required) |
-| Voice | Browser-native Web Speech API (`SpeechSynthesis` for text-to-speech, `SpeechRecognition` for speech-to-text) |
+| Voice |Elevan Labs API  for text-to-speech,speech-to-text) |
 | Frontend | Plain HTML / CSS / JavaScript (no framework, no build step) |
 | Hosting | Render (single Web Service serves both API and static frontend) |
 
