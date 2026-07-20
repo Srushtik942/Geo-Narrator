@@ -165,14 +165,6 @@ This app deploys as a **single Render Web Service** — no separate frontend hos
 ---
 
 
-## Future Progress
-
-- Multi-language voice narration — guide speaks in the visitor's chosen language
-- Auto-translate Q&A answers to match selected language
-- Language-aware voice modulation (tone/accent suited to each language)
-- Language selector added to sign-in/onboarding flow
-- Automatic GPS-based location detection (no manual selection)
-- Voice modulation for more expressive, natural-sounding narration
 
 
 ## Known limitations / hackathon scope notes
@@ -192,6 +184,38 @@ This app deploys as a **single Render Web Service** — no separate frontend hos
 - Language selector added to sign-in/onboarding flow
 - Automatic GPS-based location detection (no manual selection)
 - Voice modulation for more expressive, natural-sounding narration
+
+## 🐳 Running with Docker
+
+### Setup
+
+1. Clone the repo
+```bash
+   git clone https://github.com/your-username/geo-narrator.git
+   cd geo-narrator
+```
+
+2. Copy the example environment file and fill in your own keys
+```bash
+   cp .env.example .env
+```
+   Then edit `.env` with your own values (Anthropic API key, Google Client ID, ElevenLabs keys, JWT secret, etc.)
+
+3. Build and run
+```bash
+   docker compose up
+```
+
+4. Open the app
+```
+   http://localhost:3000
+```
+
+### Stopping the app
+```bash
+docker compose down
+```
+
 
 ## License
 
