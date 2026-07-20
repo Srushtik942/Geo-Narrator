@@ -6,6 +6,13 @@ An AI-powered voice tour guide that narrates points of interest as you explore t
 
 ---
 
+<img width="1786" height="865" alt="image" src="https://github.com/user-attachments/assets/ab7393d7-7a10-4723-b0c4-c5e69537a279" />
+<img width="1121" height="791" alt="image" src="https://github.com/user-attachments/assets/ad7c6d69-290d-4628-a016-fb6ebca78018" />
+<img width="1118" height="796" alt="image" src="https://github.com/user-attachments/assets/885ba516-5540-41c7-b2a3-66a80e21d8db" />
+
+
+
+
 ## What it does
 
 - Sign in with Google to start your personal guided walk
@@ -24,7 +31,7 @@ An AI-powered voice tour guide that narrates points of interest as you explore t
 | Auth | Google Identity Services (client-side) + Google token verification server-side (`google-auth-library`) + JWT sessions |
 | AI narration & Q&A | Claude models via OpenRouter API |
 | AI image generation | Pollinations.ai (free, no key required) |
-| Voice | Browser-native Web Speech API (`SpeechSynthesis` for text-to-speech, `SpeechRecognition` for speech-to-text) |
+| Voice |Elevan Labs API  for text-to-speech,speech-to-text) |
 | Frontend | Plain HTML / CSS / JavaScript (no framework, no build step) |
 | Hosting | Render (single Web Service serves both API and static frontend) |
 
@@ -158,14 +165,6 @@ This app deploys as a **single Render Web Service** — no separate frontend hos
 ---
 
 
-## Future Progress
-
-- Multi-language voice narration — guide speaks in the visitor's chosen language
-- Auto-translate Q&A answers to match selected language
-- Language-aware voice modulation (tone/accent suited to each language)
-- Language selector added to sign-in/onboarding flow
-- Automatic GPS-based location detection (no manual selection)
-- Voice modulation for more expressive, natural-sounding narration
 
 
 ## Known limitations / hackathon scope notes
@@ -185,6 +184,38 @@ This app deploys as a **single Render Web Service** — no separate frontend hos
 - Language selector added to sign-in/onboarding flow
 - Automatic GPS-based location detection (no manual selection)
 - Voice modulation for more expressive, natural-sounding narration
+
+## 🐳 Running with Docker
+
+### Setup
+
+1. Clone the repo
+```bash
+   git clone https://github.com/your-username/geo-narrator.git
+   cd geo-narrator
+```
+
+2. Copy the example environment file and fill in your own keys
+```bash
+   cp .env.example .env
+```
+   Then edit `.env` with your own values (Anthropic API key, Google Client ID, ElevenLabs keys, JWT secret, etc.)
+
+3. Build and run
+```bash
+   docker compose up
+```
+
+4. Open the app
+```
+   http://localhost:3000
+```
+
+### Stopping the app
+```bash
+docker compose down
+```
+
 
 ## License
 
