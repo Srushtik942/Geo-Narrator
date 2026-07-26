@@ -34,33 +34,36 @@ An AI-powered voice tour guide that narrates points of interest as you explore t
 | Voice |Elevan Labs API  for text-to-speech,speech-to-text) |
 | Frontend | Plain HTML / CSS / JavaScript (no framework, no build step) |
 | Hosting | Render (single Web Service serves both API and static frontend) |
+| Database | PostgreSQL (hosted on Neon), accessed via Prisma ORM |
+| Cache    | Redis (hosted on Upstash) — caches AI-generated narration + image URLs |
 
 ---
 
-## Project structure
-
-```
 Geo-Narrator/
 ├── index.js                 # Express app entry point
+├── prisma/
+│   └── schema.prisma          # Database models (User, Poi, Visit)
+├── prisma.config.ts           # Prisma 7 datasource config
 ├── frontend/
 │   ├── index.html
 │   ├── app.js
 │   ├── styles.css
 │   └── favicon.ico
 ├── routes/
-│   ├── auth.js               # POST /api/auth/google
-│   └── narration.js          # POST /api/narration, POST /api/ask, POST /api/image
+│   ├── auth.js                # POST /api/auth/google
+│   └── narration.js           # POST /api/narration, /api/ask, /api/image, GET /api/journal
 ├── Services/
 │   └── authentication/
-│       └── auth.js           # Google token verification (verifyGoogleToken)
+│       └── auth.js            # Google token verification (verifyGoogleToken)
 ├── middleware/
-│   └── authMiddleware.js     # JWT session verification
+│   └── authMiddleware.js      # JWT session verification
 ├── lib/
-│   └── claude.js             # callClaude() + generateImage()
-├── .env                       # local secrets (never committed)
-├── .env.example                # template for required env vars
+│   ├── claude.js               # callClaude() + generateImage()
+│   ├── db.js                   # Prisma client + saveVisit() + getUserJournal()
+│   └── cache.js                # Redis client + getCachedNarration() + setCachedNarration()
+├── .env                        # local secrets (never committed)
+├── .env.example                 # template for required env vars
 └── package.json
-```
 
 ---
 
@@ -85,8 +88,9 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 | `ANTHROPIC_MODEL` | Any Claude model slug available on OpenRouter, e.g. `anthropic/claude-sonnet-4.5` | Optional — has a default |
 | `PORT` | Any free local port | Optional — defaults to 3000 |
 | `CORS_ORIGINS` | Comma-separated list of allowed frontend origins | Yes |
-
-**Never commit `.env`.** It's already listed in `.gitignore`.
+| `DATABASE_URL`      | [Neon](https://neon.com) → your project → Connection string                                                                   | Yes |
+| `REDIS_URL`         | [Upstash](https://upstash.com) → your database → Connect → Redis URL (`rediss://..`)                                        | Yes |
+| `CACHE_TTL_SECONDS` | How long cached narration/image data lives in Redis, in seconds                                                               | Optional — defaults to 604800 (7 days) |
 
 ---
 
@@ -172,18 +176,43 @@ This app deploys as a **single Render Web Service** — no separate frontend hos
 - Location detection (Geolocation + Haversine proximity trigger) is designed but the demo primarily uses manual POI selection for reliability during live demos, since GPS is inconsistent indoors/on stage
 - `SpeechRecognition` (voice input) works best on Chrome and Safari iOS 14.5+; browser support varies
 - Image generation via Pollinations.ai has no guaranteed uptime SLA — it's free and has no key, which is why it was chosen for the hackathon build over paid alternatives
-- No persistent database is wired in yet for journal/history — the `/api/journal` shape exists in the backend rules but isn't required for the current demo flow
+- Persistence is now wired in (PostgreSQL via Neon), but the `/api/journal` endpoint has no frontend UI yet — visit history is recorded but not currently viewable in the app
+- The Redis cache is keyed by point-of-interest name only, not persona — so narration text may reflect a different persona's voice than the one currently selected, if that POI was cached by an earlier request
 
 ---
 
-## Future Progress
+## Persistence & Caching
 
-- Multi-language voice narration — guide speaks in the visitor's chosen language
-- Auto-translate Q&A answers to match selected language
-- Language-aware voice modulation (tone/accent suited to each language)
-- Language selector added to sign-in/onboarding flow
-- Automatic GPS-based location detection (no manual selection)
-- Voice modulation for more expressive, natural-sounding narration
+Geo Narrator uses two data stores in production:
+
+**PostgreSQL (via Neon + Prisma)** — permanent storage for:
+- `User` — created on Google sign-in, keyed by Google `sub`
+- `Poi` — one row per unique point of interest ever narrated
+- `Visit` — one row per narration request, linking a user to a POI with the persona used and the narration text/image generated
+
+**Redis (via Upstash)** — a short-lived cache that sits in front of the AI calls. Before generating a new narration, the app checks Redis for an existing entry keyed by `poiName`. On a cache hit, it returns the cached narration + image URL instantly, skipping the Claude and Pollinations calls entirely, and still records a `Visit` for that user. Cache entries expire after `CACHE_TTL_SECONDS` (7 days by default).
+
+**Note:** the cache key is POI-only, not persona-specific — so the first persona to narrate a given place "wins" the cached text until it expires, and later requests for the same POI with a different persona will still receive that cached version. This is a deliberate tradeoff to maximize cache hits and minimize AI API cost.
+
+### Local setup
+
+Both services can be run locally via `docker-compose.yml`:
+
+\`\`\`bash
+docker compose up postgres redis -d
+\`\`\`
+
+Then run migrations against your database:
+
+\`\`\`bash
+npx prisma migrate dev
+\`\`\`
+
+For hosted alternatives (recommended if you don't want to run Docker), see:
+- [Neon](https://neon.com) for Postgres — free tier, instant connection string
+- [Upstash](https://upstash.com) for Redis — free tier, serverless
+
+
 
 ## 🐳 Running with Docker
 
@@ -216,7 +245,16 @@ This app deploys as a **single Render Web Service** — no separate frontend hos
 docker compose down
 ```
 
+## Future Progress
+
+- Multi-language voice narration — guide speaks in the visitor's chosen language
+- Auto-translate Q&A answers to match selected language
+- Language-aware voice modulation (tone/accent suited to each language)
+- Language selector added to sign-in/onboarding flow
+- Automatic GPS-based location detection (no manual selection)
+- Voice modulation for more expressive, natural-sounding narration
+
 
 ## License
 
-Built for OpenAI Codex Hackathon, July 2026.
+Built for OpenAI Codex Hackathon, July 2026. If you've have any query please connect here srushtikulkarni09@gmail.com
