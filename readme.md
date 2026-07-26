@@ -38,7 +38,7 @@ An AI-powered voice tour guide that narrates points of interest as you explore t
 | Cache    | Redis (hosted on Upstash) — caches AI-generated narration + image URLs |
 
 ---
-
+```
 Geo-Narrator/
 ├── index.js                 # Express app entry point
 ├── prisma/
@@ -64,7 +64,7 @@ Geo-Narrator/
 ├── .env                        # local secrets (never committed)
 ├── .env.example                 # template for required env vars
 └── package.json
-
+```
 ---
 
 ## Environment variables
